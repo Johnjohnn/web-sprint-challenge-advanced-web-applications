@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosWithAuth from "../axiosWithAuth";
 
 const initialColor = {
   color: "",
@@ -7,9 +7,40 @@ const initialColor = {
 };
 
 const ColorList = ({ colors, updateColors }) => {
-  console.log(colors);
   const [editing, setEditing] = useState(false);
   const [colorToEdit, setColorToEdit] = useState(initialColor);
+  const [newColor, setNewColor] = useState({
+    color: "",
+    code: {
+      hex: ""
+    }
+  })
+
+  const updateNewColor = e =>{
+    if(e.target.name === "color"){
+      setNewColor({
+        ...newColor,
+        color: e.target.value
+      })
+    }else{
+      setNewColor({
+        ...newColor,
+        code: {
+          hex: e.target.value
+        }
+      });
+    }
+  }
+
+  const createNewColor = e =>{
+    e.preventDefault();
+    console.log(newColor);
+    axiosWithAuth.post("http://localhost:5000/api/colors", newColor).then(({data})=>{
+      updateColors(data)
+    }).catch(err=>{
+      console.log(err);
+    });
+  }
 
   const editColor = color => {
     setEditing(true);
@@ -21,10 +52,27 @@ const ColorList = ({ colors, updateColors }) => {
     // Make a put request to save your updated color
     // think about where will you get the id from...
     // where is is saved right now?
+    axiosWithAuth.put(`http://localhost:5000/api/colors/${colorToEdit.id}`, colorToEdit).then(({data})=>{
+      updateColors(colors.map(color=>{
+          if(color.id === data.id){
+            return data;
+          }
+          return color;
+      }));
+    }).catch(err=>{
+      console.log(err);
+    })
   };
 
   const deleteColor = color => {
     // make a delete request to delete this color
+    axiosWithAuth.delete(`http://localhost:5000/api/colors/${color.id}`).then(({data})=>{
+      updateColors(
+        colors.filter(item=> item.id !== color.id)
+      );
+    }).catch(err=>{
+      console(err);
+    })
   };
 
   return (
@@ -32,7 +80,7 @@ const ColorList = ({ colors, updateColors }) => {
       <p>colors</p>
       <ul>
         {colors.map(color => (
-          <li key={color.color} onClick={() => editColor(color)}>
+          <li data-testid="color" key={color.color} onClick={() => editColor(color)}>
             <span>
               <span className="delete" onClick={e => {
                     e.stopPropagation();
@@ -80,6 +128,20 @@ const ColorList = ({ colors, updateColors }) => {
           </div>
         </form>
       )}
+      <form onSubmit={createNewColor}>
+        <legend>Add Color</legend>
+        <label>
+          color name:
+          <input onChange={updateNewColor} value={newColor.color} type="text" name="color"/>
+        </label>
+        <label>
+          hex code:
+          <input onChange={updateNewColor} value={newColor.code.hex} type="text" name="hex"/>
+        </label>
+        <div className="button-row">
+          <button>Create</button>
+        </div>
+      </form>
       <div className="spacer" />
       {/* stretch - build another form here to add a color */}
     </div>
